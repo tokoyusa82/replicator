@@ -252,7 +252,7 @@ def create_medium(sources, texts):
         scaled_labels.append(f"[{label}]")
         filters.append(
             f"[{index}:v]scale=1280:720:force_original_aspect_ratio=increase,"
-            f"crop=1280:720,setsar=1[{label}]"
+            f"crop=1280:720,setsar=1,fps=24,setpts=PTS-STARTPTS,format=yuv420p[{label}]"
         )
 
     filters.append("".join(scaled_labels) + f"concat=n={len(sources)}:v=1:a=0[base]")
