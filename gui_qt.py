@@ -13,12 +13,14 @@ from PySide6.QtWidgets import (
     QFrame,
     QFileDialog,
     QGridLayout,
+    QBoxLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -40,8 +42,12 @@ class ReplicatorWindow(QWidget):
         self.audio_file = ROOT / "audio" / "voice.mp3"
         self.overlay_file = ROOT / "overlay.png"
         self.setWindowTitle("Replicator")
-        self.resize(900, 680)
-        self.setMinimumSize(780, 580)
+        screen = QApplication.primaryScreen()
+        available = screen.availableGeometry() if screen else None
+        width = min(1000, available.width() - 32) if available else 1000
+        height = min(760, available.height() - 48) if available else 760
+        self.resize(max(620, width), max(460, height))
+        self.setMinimumSize(620, 460)
         self.build_ui()
         self.refresh_status()
 
@@ -87,7 +93,18 @@ class ReplicatorWindow(QWidget):
             """
         )
 
-        root = QVBoxLayout(self)
+        window_layout = QVBoxLayout(self)
+        window_layout.setContentsMargins(0, 0, 0, 0)
+        self.scroll_area = QScrollArea(self)
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.NoFrame)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        content = QWidget()
+        self.scroll_area.setWidget(content)
+        window_layout.addWidget(self.scroll_area)
+
+        root = QVBoxLayout(content)
         root.setContentsMargins(22, 20, 22, 22)
         root.setSpacing(14)
 
@@ -98,9 +115,9 @@ class ReplicatorWindow(QWidget):
         root.addWidget(title)
         root.addWidget(subtitle)
 
-        top = QHBoxLayout()
-        top.setSpacing(14)
-        root.addLayout(top, 0)
+        self.top_layout = QBoxLayout(QBoxLayout.LeftToRight)
+        self.top_layout.setSpacing(14)
+        root.addLayout(self.top_layout, 0)
 
         form_group = QGroupBox("Text on video")
         form_layout = QGridLayout(form_group)
@@ -120,7 +137,7 @@ class ReplicatorWindow(QWidget):
         ):
             form_layout.addWidget(QLabel(label), row, 0)
             form_layout.addWidget(field, row, 1)
-        top.addWidget(form_group, 1)
+        self.top_layout.addWidget(form_group, 1)
 
         files_group = QGroupBox("Files")
         files_layout = QVBoxLayout(files_group)
@@ -142,7 +159,7 @@ class ReplicatorWindow(QWidget):
         file_buttons.addWidget(self.choose_overlay_button, 1, 0)
         file_buttons.addWidget(self.refresh_button, 1, 1)
         files_layout.addLayout(file_buttons)
-        top.addWidget(files_group, 1)
+        self.top_layout.addWidget(files_group, 1)
 
         actions = QHBoxLayout()
         self.start_button = QPushButton("Start")
@@ -165,8 +182,20 @@ class ReplicatorWindow(QWidget):
         self.log = QTextEdit()
         self.log.setObjectName("log")
         self.log.setReadOnly(True)
+        self.log.setMinimumHeight(180)
         log_layout.addWidget(self.log)
         root.addWidget(log_group, 1)
+        self.update_responsive_layout()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.update_responsive_layout()
+
+    def update_responsive_layout(self):
+        if hasattr(self, "top_layout"):
+            direction = QBoxLayout.TopToBottom if self.width() < 900 else QBoxLayout.LeftToRight
+            if self.top_layout.direction() != direction:
+                self.top_layout.setDirection(direction)
 
     def make_input(self, value):
         field = QLineEdit(value)
